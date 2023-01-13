@@ -1,0 +1,851 @@
+---
+title: "Take Home Exam"
+author: '11910'
+date: "08/04/2021"
+output: html_document
+---
+```{r setup, include=FALSE}
+getwd()
+knitr::opts_knit$set(root.dir = "/Users/michaelafricova/Desktop/Network Analysis/2. Summative PSs")
+# install.packages("centiserve")
+# Royal1 = c("#899DA4", "#C93312", "#FAEFD1", "#DC863B")
+# Royal2 = c("#9A8822", "#F5CDB4", "#F8AFA8", "#FDDDA0", "#74A089")
+# GrandBudapest1 = c("#F1BB7B", "#FD6467", "#5B1A18", "#D67236")
+# GrandBudapest2 = c("#E6A0C4", "#C6CDF7", "#D8A499", "#7294D4")
+library(wesanderson)
+library(network)
+library(intergraph)
+library(sna)
+library(ergm)
+library(igraph)
+library(corrplot)
+library(tidyverse)
+library(readxl)
+library(foreach)
+library(scales)
+library(gplots)
+```
+
+```{r}
+meta <- read.csv("HEI_metadata.csv", header = TRUE, as.is = TRUE, sep=";")
+main <- read.csv("main_el.csv", header = TRUE, as.is = TRUE, sep=";")
+sciences <- read.csv("sci_el.csv", header = TRUE, as.is = TRUE, sep=";")
+social_sciences <- read.csv("soc_el.csv", header = TRUE, as.is = TRUE, sep=";")
+engineering <- read.csv("eng_el.csv", header = TRUE, as.is = TRUE, sep=";")
+humanities <- read.csv("hum_el.csv", header = TRUE, as.is = TRUE, sep=";")
+```
+
+```{r}
+n_sciences <- graph_from_edgelist(as.matrix(sciences[,1:2]), directed=TRUE)
+n_social_sciences <- graph_from_edgelist(as.matrix(social_sciences[,1:2]), directed=TRUE)
+n_engineering <- graph_from_edgelist(as.matrix(engineering[,1:2]), directed=TRUE)
+n_humanities <- graph_from_edgelist(as.matrix(humanities[,1:2]), directed=TRUE)
+n_main <- graph_from_edgelist(as.matrix(main[,1:2]), directed=TRUE)
+```
+
+```{r}
+E(n_sciences)$weight <- sciences$n
+E(n_social_sciences)$weight <- social_sciences$n
+E(n_engineering)$weight <- engineering$n
+E(n_humanities)$weight <- humanities$n
+E(n_main)$weight <- main$n
+```
+
+```{r}
+main_vs <- get.data.frame(n_main, what= c("vertices") )
+main_vs_with_attr <- merge(main_vs, meta, by.x = "name", by.y = "Erasmus.ID")
+main_selected_attr <- main_vs_with_attr %>% select(name, Region, Latitude, Longitude, X2013.Ranking, Total.academic.staff..FTE., POI_count)
+n_main <- graph_from_data_frame(d = as.matrix(main[,1:2]), directed=TRUE, vertices = main_selected_attr)
+n_main #attributes assigned
+```
+############################################################################################################
+############################################################################################################
+############################################################################################################
+QUESTION 1
+SCIENCE ERASMUS NETWORK
+
+```{r}
+summary(n_sciences)
+n1 = gorder(n_sciences)
+p1 = graph.density(n_sciences)
+
+# Erdos model
+Erdos1 <- sample_gnp(n1, p1, directed = TRUE) 
+g_ran_1 <- lapply(rep(1, 100), function(x)
+  sample_gnp(n1, p1))
+g_ran_apl_e1 <- sapply(g_ran_1, average.path.length)
+g_ran_acc_e1 <- sapply(g_ran_1, transitivity)
+```
+
+```{r}
+triad.census(n_sciences)
+triad.census(Erdos1)
+```
+
+############################################################################################################
+SOCIAL SCIENCE ERASMUS NETWORK
+
+```{r}
+summary(n_social_sciences)
+n2 = gorder(n_social_sciences)
+p2 = graph.density(n_social_sciences)
+
+# Erdos model
+Erdos2 <- sample_gnp(n2, p2, directed = TRUE) 
+g_ran_2 <- lapply(rep(1, 100), function(x)
+  sample_gnp(n2, p2))
+g_ran_apl_e2 <- sapply(g_ran_2, average.path.length)
+g_ran_acc_e2 <- sapply(g_ran_2, transitivity)
+```
+
+```{r}
+triad.census(n_social_sciences)
+triad.census(Erdos2)
+```
+
+############################################################################################################
+ENGINEERING ERASMUS NETWORK
+
+```{r}
+summary(n_engineering)
+n3 = gorder(n_engineering)
+p3 = graph.density(n_engineering)
+
+# Erdos model
+Erdos3 <- sample_gnp(n3, p3, directed = TRUE) 
+g_ran_3 <- lapply(rep(1, 100), function(x)
+  sample_gnp(n3, p3))
+g_ran_apl_e3 <- sapply(g_ran_3, average.path.length)
+g_ran_acc_e3 <- sapply(g_ran_3, transitivity)
+```
+
+```{r}
+triad.census(n_engineering)
+triad.census(Erdos3)
+```
+
+############################################################################################################
+HUMANITIES ERASMUS NETWORK
+
+```{r}
+summary(n_humanities)
+n4 = gorder(n_humanities)
+p4 = graph.density(n_humanities)
+
+# Erdos model
+Erdos4 <- sample_gnp(n4, p4, directed = TRUE) 
+g_ran_4 <- lapply(rep(1, 100), function(x)
+  sample_gnp(n4, p4))
+g_ran_apl_e4 <- sapply(g_ran_4, average.path.length)
+g_ran_acc_e4 <- sapply(g_ran_4, transitivity)
+```
+```{r}
+triad.census(n_humanities)
+triad.census(Erdos4)
+```
+
+############################################################################################################
+DATAFRAME
+
+```{r}
+res_table1 <- data.frame(c('Real Science Erasmus Network', 'Erdos-Renyi Model of Science', '-',
+                          'Real Social Science Erasmus Network', 'Erdos-Renyi Model of Social Science', '-',
+                          'Real Engineering Network', 'Erdos-Renyi Model of Engineering', '-',
+                          'Real Humanities Erasmus Network', 'Erdos-Renyi Model of Humanities'),  
+                        c(round(edge_density(n_sciences),4), round(edge_density(Erdos1),4), '-', 
+                          round(edge_density(n_social_sciences),4), round(edge_density(Erdos2),4), '-', 
+                          round(edge_density(n_engineering),4), round(edge_density(Erdos3),4), '-', 
+                          round(edge_density(n_humanities),4), round(edge_density(Erdos4),4)),
+                        c(round(average.path.length(n_sciences),4), round(average.path.length(Erdos1),4), '-', 
+                          round(average.path.length(n_social_sciences),4), round(average.path.length(Erdos2),4), '-', 
+                          round(average.path.length(n_engineering),4), round(average.path.length(Erdos3),4), '-', 
+                          round(average.path.length(n_humanities),4), round(average.path.length(Erdos4),4)),
+                        c(round(transitivity(n_sciences),4), round(transitivity(Erdos1),4), '-', 
+                          round(transitivity(n_social_sciences),4), round(transitivity(Erdos2),4), '-', 
+                          round(transitivity(n_engineering),4), round(transitivity(Erdos3),4), '-', 
+                          round(transitivity(n_humanities),4), round(transitivity(Erdos4),4)),
+                        c(round(reciprocity(n_sciences),4), round(reciprocity(Erdos1),4), '-', 
+                          round(reciprocity(n_social_sciences),4), round(reciprocity(Erdos2),4), '-',  
+                          round(reciprocity(n_engineering),4), round(reciprocity(Erdos3),4), '-',
+                          round(reciprocity(n_humanities),4), round(reciprocity(Erdos4),4)))
+colnames(res_table1) <- c('Name', 'Network Density', 'Average path length', 'Transitivity', 'Reciprocity')
+res_table1
+
+```
+
+############################################################################################################
+GRAPH
+```{r pressure, echo=FALSE}
+layout_rt1 <- layout_nicely(n_sciences)
+layout_rt_1 <- layout_nicely(Erdos1)
+layout_rt2 <- layout_nicely(n_social_sciences)
+layout_rt_2 <- layout_nicely(Erdos2)
+layout_rt3 <- layout_nicely(n_engineering)
+layout_rt_3 <- layout_nicely(Erdos3)
+layout_rt4 <- layout_nicely(n_humanities)
+layout_rt_4 <- layout_nicely(Erdos4)
+
+par(mfrow=c(2,4))
+plot(n_sciences, 
+     edge.width = 0.25*E(n_sciences)$weight,
+     vertex.label = NA,
+     layout = layout_rt1,
+     edge.arrow.size = 0.25, 
+     vertex.size = 3, 
+     main = "Science Erasmus 
+ Network",
+     edge.width = 0.2,
+     cex.main = 0.5,
+     frame.color = "#F1BB7B",
+     vertex.color = "#F1BB7B")
+plot(n_social_sciences, 
+     edge.width = 0.25*E(n_social_sciences)$weight, 
+     vertex.label = NA,
+     layout = layout_rt2,
+     edge.arrow.size = 0.25, 
+     vertex.size = 3, 
+     main = "Social Science 
+ Erasmus Network",
+     cex.main = 0.5,
+     edge.width=0.2,
+     frame.color = "#7294D4",
+     vertex.color = "#7294D4")
+plot(n_engineering, 
+     edge.width = 0.25*E(n_engineering)$weight, 
+     vertex.label = NA,
+     layout = layout_rt3,
+     edge.arrow.size = 0.25, 
+     vertex.size = 3, 
+     main = "Engineering Erasmus 
+ Network",
+     cex.main = 0.5,
+     edge.width=0.2,
+     frame.color = "#5B1A18",
+     vertex.color = "#5B1A18")
+plot(n_humanities, 
+     edge.width = 0.25*E(n_humanities)$weight, 
+     vertex.label = NA,
+     layout = layout_rt4,
+     edge.arrow.size = 0.25, 
+     vertex.size = 3, 
+     main = "Humanities Erasmus 
+ Network",
+     cex.main = 0.5,
+     edge.width=0.2,
+     frame.color = "#74A089",
+     vertex.color = "#74A089")
+plot(Erdos1,
+     edge.width = 0.20, 
+     vertex.label = NA,
+     layout = layout_rt_1,
+     edge.arrow.size = 0.20, 
+     vertex.size = 3, 
+     main = "Erdos-Renyi Model for 
+ Science Network",
+     cex.main = 0.5,
+     edge.width=0.2,
+     vertex.color = "#F1BB7B")
+plot(Erdos2,
+     edge.width = 0.20, 
+     vertex.label = NA,
+     layout = layout_rt_2,
+     edge.arrow.size = 0.20, 
+     vertex.size = 3, 
+     main = "Erdos-Renyi Model for
+ Social Science Network",
+     cex.main = 0.5,
+     edge.width=0.2,
+     frame.color = "#7294D4",
+     vertex.color = "#7294D4")
+plot(Erdos3,
+     edge.width = 0.20, 
+     vertex.label = NA,
+     layout = layout_rt_3,
+     edge.arrow.size = 0.20, 
+     vertex.size = 3, 
+     main = "Erdos-Renyi Model for
+ Engineering Network",
+     edge.width=0.2,
+     cex.main = 0.5,
+     frame.color = "#5B1A18",
+     vertex.color = "#5B1A18")
+plot(Erdos4,
+     edge.width = 0.20, 
+     vertex.label = NA,
+     layout = layout_rt_4,
+     edge.arrow.size = 0.20, 
+     vertex.size = 3, 
+     main = "Erdos-Renyi Model
+ for Humanities Network",
+     edge.width=0.2,
+     cex.main = 0.5,
+     frame.color = "#74A089",
+     vertex.color = "#74A089")
+```
+############################################################################################################
+############################################################################################################
+############################################################################################################
+QUESTION 2
+```{r}
+n_main <- graph_from_edgelist(as.matrix(main[,1:2]), directed=TRUE)
+E(n_main)$weight <- main$n
+# In-Degree
+degree_in <- degree(n_main, mode="in")
+# Out-Degree
+degree_out <- degree(n_main, mode = "out")
+# Eigenvector Centrality
+eigenvector <- evcent(n_main)$vector
+# PageRank Centrality
+pagerank <- page_rank(n_main, weights = E(n_main)$weight)$vector
+# Closeness In
+closeness_in <- closeness(n_main, mode = "in")
+# Closeness Out
+closeness_out <- closeness(n_main, mode = "out")
+# Betweenness Centrality
+betweenness <- betweenness(n_main)
+# Hub Centrality - if the graph has weight attribute, this is selected by default
+hub <- hub_score(n_main, weights = E(n_main)$weight)$vector
+# Authority Centrality - if the graph has weight attribute, this is selected by default
+authority <- authority_score(n_main, weights = E(n_main)$weight)$vector
+
+centralities_main <- data.frame(degree_in, degree_out, eigenvector, pagerank, closeness_in, closeness_out, betweenness, hub, authority)
+cors_main <- cor(centralities_main, method = "pearson")
+print(cors_main)
+# Pairwise Correlations of Centrality Measures
+corrplot.mixed(cors_main, tl.col = "black", tl.cex = 0.5, number.cex = 0.7)
+```
+
+```{r}
+summary(centralities_main)
+centralities_main %>% slice(which.max(centralities_main$authority))
+```
+
+```{r}
+filter(meta, meta$University == "London School of Economics and Political Science")
+filter(meta, meta$University == "Imperial College London")
+filter(meta, meta$University == "King's College London")
+filter(meta, meta$University == "City University London")
+filter(meta, meta$University == "Queen Mary University of London")
+```
+```{r}
+LSE_line_prep <-  centralities_main %>% dplyr::filter(row.names(centralities_main) == "UK LONDON020")
+Imperial_line_prep <- centralities_main %>% dplyr::filter(row.names(centralities_main) == "UK LONDON015")
+Kings_line_prep <- centralities_main %>% dplyr::filter(row.names(centralities_main) == "UK LONDON017")
+City_line_prep <- centralities_main %>% dplyr::filter(row.names(centralities_main) == "UK LONDON029")
+QM_line_prep <- centralities_main %>% dplyr::filter(row.names(centralities_main) == "UK LONDON031")
+unis <- rbind(LSE_line_prep, 
+              Imperial_line_prep, 
+              Kings_line_prep, 
+              City_line_prep, 
+              QM_line_prep)
+```
+
+```{r}
+LSE_line2 <- round(LSE_line_prep[9], digits = 4)
+Imperial_line2 <- round(Imperial_line_prep[9], digits = 4)
+Kings_line2 <- round(Kings_line_prep[9], digits = 4)
+QM_line2 <- round(QM_line_prep[9], digits = 4)
+City_line2 <- round(City_line_prep[9], digits = 4)
+```
+
+```{r}
+hist(authority, 
+     breaks=12, 
+     main = "Authority Centrality Distribution", 
+     col = "grey", 
+     cex.axis = 0.6,
+     xlab = "Authority Centrality",
+     xaxt = "n")
+axis(1, 
+     at = c(LSE_line2, Imperial_line2, Kings_line2, QM_line2, City_line2, 0.10, 0.20, 0.30, 0.40, 0.5, 0.6, 0.7, 0.8, 0.9, 1),
+     labels = TRUE,
+     cex.axis = 0.6,
+     las = 2)
+abline(v=c(LSE_line2), col=c("#C93312"), lty=c(2), lwd=c(3))
+abline(v=c(Imperial_line2), col=c("#7294D4"), lty=c(2), lwd=c(3))
+abline(v=c(Kings_line2), col=c("#5B1A18"), lty=c(2), lwd=c(3))
+abline(v=c(QM_line2), col=c("#F8AFA8"), lty=c(2), lwd=c(3))
+abline(v=c(City_line2), col=c("#DC863B"), lty=c(2), lwd=c(3))
+legend("topright", legend=c("LSE", "Imperial", "King's", "Queen Mary","City"),
+       col=c("#C93312", "#7294D4", "#5B1A18", "#F8AFA8", "#DC863B"), pch = 15, cex=0.8)
+```
+
+```{r}
+LSE_line <- round(LSE_line_prep[8], digits = 4)
+Imperial_line <- round(Imperial_line_prep[8], digits = 4)
+Kings_line <- round(Kings_line_prep[8], digits = 4)
+QM_line <- round(QM_line_prep[8], digits = 4)
+City_line <- round(City_line_prep[8], digits = 4)
+```
+
+```{r}
+hist(hub, 
+     breaks=12, 
+     main = "Hub Centrality Distribution", 
+     col = "grey", 
+     cex.axis = 0.6,
+     xlab = "Hub Centrality",
+     xaxt = "n")
+axis(1, 
+     at = c(0.000, LSE_line, Imperial_line, Kings_line, QM_line, City_line, 0.10, 0.20, 0.30, 0.40, 0.5, 0.6, 0.7, 0.8, 0.9, 1),
+     labels = TRUE,
+     cex.axis = 0.6,
+     las = 2)
+abline(v=c(LSE_line), col=c("#C93312"), lty=c(2), lwd=c(3))
+abline(v=c(Imperial_line), col=c("#7294D4"), lty=c(2), lwd=c(3))
+abline(v=c(Kings_line), col=c("#5B1A18"), lty=c(2), lwd=c(3))
+abline(v=c(QM_line), col=c("#F8AFA8"), lty=c(2), lwd=c(3))
+abline(v=c(City_line), col=c("#DC863B"), lty=c(2), lwd=c(3))
+legend("topright", legend=c("LSE", "Imperial", "King's", "Queen Mary","City"),
+       col=c("#C93312", "#7294D4", "#5B1A18", "#F8AFA8", "#DC863B"), pch = 15, cex=0.8)
+```
+
+```{r}
+summary(centralities_main)
+centralities_main %>% slice(which.max(centralities_main$hub))
+```
+
+
+############################################################################################################
+############################################################################################################
+############################################################################################################
+QUESTION 3
+```{r}
+prob_degree_ss <- degree.distribution(n_social_sciences, mode="in")
+length(prob_degree_ss)
+prob_degree_s <- degree.distribution(n_sciences, mode="in")
+length(prob_degree_s)
+prob_degree_hum <- degree.distribution(n_humanities, mode = "in")
+length(prob_degree_hum)
+prob_degree_en <- degree.distribution(n_engineering, mode = "in")
+length(prob_degree_en)
+g <- sample_pa(n=100, m=4, directed=F, out.pref=T)
+summary(g)
+```
+
+```{r}
+degree_in_social_sciences <- 1:max(degree(n_social_sciences, mode="in"))
+prob_degree_ss <- degree.distribution(n_social_sciences, mode="in")
+prob_degree_ss <- prob_degree_ss[-1] & prob_degree_ss[which(prob_degree_ss!=0)]
+ccdf1 <- NULL
+for (i in 1:length(prob_degree_ss)) {ccdf1[i] = sum( prob_degree_ss[ seq(i, length(prob_degree_ss)) ] )}
+
+degree_in_sciences <- 1:max(degree(n_sciences, mode="in"))
+prob_degree_s <- degree.distribution(n_sciences, mode="in")
+prob_degree_s <- prob_degree_s[-1] & prob_degree_s[which(prob_degree_s!=0)]
+ccdf2 <- NULL
+for (i in 1:length(prob_degree_s)) {ccdf2[i] = sum( prob_degree_s[ seq(i, length(prob_degree_s)) ] )}
+
+degree_in_humanities <- 1:max(degree(n_humanities, mode="in"))
+prob_degree_hum <- degree.distribution(n_humanities, mode="in")
+prob_degree_hum <- prob_degree_hum[-1] & prob_degree_hum[which(prob_degree_hum!=0)]
+ccdf3 <- NULL
+for (i in 1:length(prob_degree_hum)) {ccdf3[i] = sum( prob_degree_hum[ seq(i, length(prob_degree_hum)) ] )}
+
+degree_in_engineering <- 1:max(degree(n_engineering, mode="in"))
+prob_degree_en <- degree.distribution(n_engineering, mode="in")
+prob_degree_en <- prob_degree_en[-1] & prob_degree_en[which(prob_degree_en!=0)]
+ccdf4 <- NULL
+for (i in 1:length(prob_degree_en)) {ccdf4[i] = sum( prob_degree_en[ seq(i, length(prob_degree_en)) ] )}
+
+plot(ccdf1 ~ degree_in_social_sciences,
+     col = "#7294D4", 
+     main = "Cumulative Distribution Function", 
+     xlab = "In-Degree", 
+     ylab = "Complementary CDF P(X>=d)", 
+     log ='xy',
+     xlim = c(1,200),
+     ylim = c(1,100))
+par(new=TRUE)
+plot(ccdf2 ~ degree_in_sciences,  log ='xy', col = "#F1BB7B", axes = FALSE, xlab = '', ylab = '', xlim = c(1,200), ylim = c(1,100))
+par(new=TRUE)
+plot(ccdf4 ~ degree_in_engineering, log ='xy',  col = "#5B1A18", axes = FALSE, xlab = '', ylab = '', xlim = c(1,200), ylim = c(1,100))
+par(new=TRUE)
+plot(ccdf3 ~ degree_in_humanities,  log ='xy', col = "#74A089", axes = FALSE, xlab = '', ylab = '', xlim = c(1,200), ylim = c(1,100))
+legend("topright", legend=c("Sciences", "Social Sciences", "Engineering", "Humanities"),
+       col=c("#F1BB7B", "#7294D4", "#5B1A18", "#74A089"), pch = 19, cex=0.8)
+```
+
+############### TESTING THE HYPOTHESIS THAT POWER LAW IS PRESENT ###############
+```{r}
+# SCIENCE NETWORK
+# install.packages("poweRlaw")
+# library(poweRlaw)
+# data <- as.data.frame(degree(n_sciences, mode = "in"))
+# data <- data[,1]
+# data <- data[which(data!=0)]
+# 
+# # fitting power law
+# data_pl = displ$new(data)
+# est = estimate_xmin(data_pl)
+# data_pl$setXmin(est)
+# m_na$setXmin(est_na)
+# WORKAROUND: https://github.com/rstudio/rstudio/issues/6692
+# Revert to 'sequential' setup of PSOCK cluster in RStudio Console on macOS and R 4.0.0
+# if (Sys.getenv("RSTUDIO") == "1" && !nzchar(Sys.getenv("RSTUDIO_TERM")) && 
+#     Sys.info()["sysname"] == "Darwin" && getRversion() >= "4.0.0") {
+#   parallel:::setDefaultClusterOptions(setup_strategy = "sequential")
+# }
+# bs2 = bootstrap(data2_pl, no_of_sims = 5000, threads = 2)
+# bs_p = bootstrap_p(data_pl)
+# bs2$bootstraps
+# hist(bs$bootstraps$gof)
+# [1] 0.07253075
+# [1] 0.08838284
+# plot(bs_p)
+```
+
+
+##########################################################################################################################
+SUBJECT NETWORKS
+
+```{r}
+ind_sciences <- degree(n_sciences, mode='in') 
+outd_sciences <- degree(n_sciences, mode='out')
+configuration_science <- sample_degseq(out.deg = outd_sciences, in.deg = ind_sciences, method = "simple")
+ind_ssciences <- degree(n_social_sciences, mode='in') 
+outd_ssciences <- degree(n_social_sciences, mode='out')
+configuration_sscience <- sample_degseq(out.deg = outd_ssciences, in.deg = ind_ssciences, method = "simple")
+ind_eng <- degree(n_engineering, mode='in') 
+outd_eng <- degree(n_engineering, mode='out')
+configuration_engineering <- sample_degseq(out.deg = outd_eng, in.deg = ind_eng, method = "simple")
+ind_hum <- degree(n_humanities, mode = "in")
+outd_hum <- degree(n_humanities, mode='out')
+configuration_humanities <- sample_degseq(out.deg = outd_hum, in.deg = ind_hum, method = "simple")
+```
+
+```{r}
+triad.census(n_sciences)
+triad.census(configuration_science)
+triad.census(n_social_sciences)
+triad.census(configuration_sscience)
+triad.census(n_engineering)
+triad.census(configuration_engineering)
+triad.census(n_humanities)
+triad.census(configuration_humanities)
+```
+
+
+############################################################################################################
+DATAFRAME
+
+```{r}
+res_table3 <- data.frame(c('Real Science Erasmus Network', 'Configuration Model of Science', '-',
+                          'Real Social Science Erasmus Network', 'Configuration Model of Social Science', '-',
+                          'Real Engineering Network', 'Configuration Model of Engineering', '-',
+                          'Real Humanities Erasmus Network', 'Configuration Model of Humanities'),  
+                        c(round(edge_density(n_sciences),4), round(edge_density(configuration_science),4), '-', 
+                          round(edge_density(n_social_sciences),4), round(edge_density(configuration_sscience),4), '-', 
+                          round(edge_density(n_engineering),4), round(edge_density(configuration_engineering),4), '-', 
+                          round(edge_density(n_humanities),4), round(edge_density(configuration_humanities),4)),
+                        c(round(average.path.length(n_sciences),4), round(average.path.length(configuration_science),4), '-', 
+                          round(average.path.length(n_social_sciences),4), round(average.path.length(configuration_sscience),4), '-', 
+                          round(average.path.length(n_engineering),4), round(average.path.length(configuration_engineering),4), '-', 
+                          round(average.path.length(n_humanities),4), round(average.path.length(configuration_humanities),4)),
+                        c(round(transitivity(n_sciences),4), round(transitivity(configuration_science),4), '-', 
+                          round(transitivity(n_social_sciences),4), round(transitivity(configuration_sscience),4), '-', 
+                          round(transitivity(n_engineering),4), round(transitivity(configuration_engineering),4), '-', 
+                          round(transitivity(n_humanities),4), round(transitivity(configuration_humanities),4)),
+                        c(round(reciprocity(n_sciences),4), round(reciprocity(configuration_science),4), '-', 
+                          round(reciprocity(n_social_sciences),4), round(reciprocity(Erdos2),4), '-',  
+                          round(reciprocity(n_engineering),4), round(reciprocity(Erdos3),4), '-',
+                          round(reciprocity(n_humanities),4), round(reciprocity(Erdos4),4)))
+colnames(res_table3) <- c('Name', 'Network Density', 'Average path length', 'Transitivity', 'Reciprocity')
+res_table3
+
+```
+```{r}
+sciences_c <- as.undirected(n_sciences, mode="collapse")
+cc_science_c <- as.undirected(configuration_science, mode="collapse")
+social_sciences_c <- as.undirected(n_social_sciences, mode="collapse")
+cc_social_sciences_c <- as.undirected(configuration_sscience, mode="collapse")
+engineering_c <- as.undirected(n_engineering, mode="collapse")
+cc_engineering_c <- as.undirected(configuration_engineering, mode="collapse")
+humanities_c <- as.undirected(n_humanities, mode="collapse")
+cc_humanities_c <- as.undirected(configuration_humanities, mode="collapse") 
+
+res_table4 <- data.frame(c('Science Erasmus - simple', 'Randomized Science Erasmus - simple', '-',
+                           'Social Science Erasmus - simple', 'Randomized Social Science Erasmus - simple', '-',
+                           'Engineering Erasmus - simple', 'Randomized Engineering Erasmus - simple', '-',
+                           'Humanities Erasmus - simple', 'Randomized Humanities Erasmus - simple', '-'),
+                         c(round(graph.density(sciences_c),4), round(edge_density(cc_science_c),4), '-', 
+                          round(edge_density(social_sciences_c),4), round(edge_density(cc_social_sciences_c),4), '-', 
+                          round(edge_density(engineering_c),4), round(edge_density(cc_engineering_c),4), '-', 
+                          round(edge_density(humanities_c),4), round(edge_density(cc_humanities_c),4), '-'))
+colnames(res_table4) <- c('Name of collapsed subject network', 'Network Density')
+print(res_table4)
+```
+
+
+
+GRAPH
+```{r pressure, echo=FALSE}
+layout_rtA <- layout_nicely(n_sciences)
+layout_rt_A <- layout_nicely(configuration_science)
+layout_rtB <- layout_nicely(n_social_sciences)
+layout_rt_B <- layout_nicely(configuration_sscience)
+layout_rtC <- layout_nicely(n_engineering)
+layout_rt_C <- layout_nicely(configuration_engineering)
+layout_rtD <- layout_nicely(n_humanities)
+layout_rt_D <- layout_nicely(configuration_humanities)
+
+par(mfrow=c(2,4))
+plot(n_sciences, 
+     edge.width = 0.25*E(n_sciences)$weight,
+     vertex.label = NA,
+     layout = layout_rtA,
+     edge.arrow.size = 0.25, 
+     vertex.size = 3, 
+     main = "Science Erasmus 
+ Network",
+     edge.width = 0.2,
+     cex.main = 0.5,
+     frame.color = "#F1BB7B",
+     vertex.color = "#F1BB7B")
+plot(n_social_sciences, 
+     edge.width = 0.25*E(n_social_sciences)$weight, 
+     vertex.label = NA,
+     layout = layout_rtB,
+     edge.arrow.size = 0.25, 
+     vertex.size = 3, 
+     main = "Social Science 
+ Erasmus Network",
+     cex.main = 0.5,
+     edge.width=0.2,
+     frame.color = "#7294D4",
+     vertex.color = "#7294D4")
+plot(n_engineering, 
+     edge.width = 0.25*E(n_engineering)$weight, 
+     vertex.label = NA,
+     layout = layout_rtC,
+     edge.arrow.size = 0.25, 
+     vertex.size = 3, 
+     main = "Engineering Erasmus 
+ Network",
+     cex.main = 0.5,
+     edge.width=0.2,
+     frame.color = "#5B1A18",
+     vertex.color = "#5B1A18")
+plot(n_humanities, 
+     edge.width = 0.25*E(n_humanities)$weight, 
+     vertex.label = NA,
+     layout = layout_rtD,
+     edge.arrow.size = 0.25, 
+     vertex.size = 3, 
+     main = "Humanities Erasmus 
+ Network",
+     cex.main = 0.5,
+     edge.width=0.2,
+     frame.color = "#74A089",
+     vertex.color = "#74A089")
+plot(configuration_science,
+     edge.width = 0.20, 
+     vertex.label = NA,
+     layout = layout_rt_A,
+     edge.arrow.size = 0.20, 
+     vertex.size = 3, 
+     main = "Configuration Model for 
+ Science Network",
+     cex.main = 0.5,
+     edge.width=0.2,
+     vertex.color = "#F1BB7B")
+plot(configuration_sscience,
+     edge.width = 0.20, 
+     vertex.label = NA,
+     layout = layout_rt_B,
+     edge.arrow.size = 0.20, 
+     vertex.size = 3, 
+     main = "Configuration Model for
+ Social Science Network",
+     cex.main = 0.5,
+     edge.width=0.2,
+     frame.color = "#7294D4",
+     vertex.color = "#7294D4")
+plot(configuration_engineering,
+     edge.width = 0.20, 
+     vertex.label = NA,
+     layout = layout_rt_C,
+     edge.arrow.size = 0.20, 
+     vertex.size = 3, 
+     main = "Configuration Model for
+ Engineering Network",
+     edge.width=0.2,
+     cex.main = 0.5,
+     frame.color = "#5B1A18",
+     vertex.color = "#5B1A18")
+plot(configuration_humanities,
+     edge.width = 0.20, 
+     vertex.label = NA,
+     layout = layout_rt_D,
+     edge.arrow.size = 0.20, 
+     vertex.size = 3, 
+     main = "Configuration Model
+ for Humanities Network",
+     edge.width=0.2,
+     cex.main = 0.5,
+     frame.color = "#74A089",
+     vertex.color = "#74A089")
+```
+
+
+############################################################################################################
+############################################################################################################
+############################################################################################################
+QUESTION 4
+
+```{r}
+n_reduced = delete_edges(n_main, which(edge_attr(n_main, "weight") < 5))
+n_reduced = delete.vertices(n_reduced, which(degree(n_reduced) == 0))
+reduced <- as.data.frame(get.edgelist(n_reduced))
+reduced_vs <- get.data.frame(n_reduced, what= c("vertices"))
+reduced_vs_with_attr <- merge(reduced_vs, meta, by.x = "name", by.y = "Erasmus.ID")
+reduced_selected_attr <- reduced_vs_with_attr %>% select(name, Region, Latitude, Longitude, X2013.Ranking, Total.academic.staff..FTE., POI_count)
+n_reduced <- graph_from_data_frame(d = as.matrix(reduced[,1:2]), directed=TRUE, vertices = reduced_selected_attr)
+```
+
+```{r}
+require(intergraph)
+require(sna)
+V(n_reduced)$Region_n <- ifelse(V(n_reduced)$Region == 'Western Europe', 1,
+                                   ifelse(V(n_reduced)$Region == 'Eastern Europe', 2,
+                                          ifelse(V(n_reduced)$Region == 'Southern Europe', 3,
+                                             ifelse(V(n_reduced)$Region == 'Northern Europe', 4, NA))))
+reduced_net <- asNetwork(n_reduced)
+```
+
+```{r}
+blockmodel <- blockmodel(reduced_net, ec = reduced_net %v% 'Region_n')$block.model
+blockmodel <- round(blockmodel, digits=3)
+colnames(blockmodel) <- c("WE", "EE", "SE", "NE")
+rownames(blockmodel)<- c("WE", "EE", "SE", "NE")
+print(blockmodel)
+```
+
+```{r}
+col <- colorRampPalette(c("#BB4444", "#EE9988", "#FFFFFF", "#77AADD", "#4477AA"))
+corrplot(blockmodel, method="color", col = col(200),
+         order="hclust", 
+         addCoef.col = "black", 
+         number.digits = 3,
+         tl.col="black", tl.srt=45)
+```
+```{r setup, include=FALSE}
+# install.packages("ape")
+library("ape")
+```
+
+```{r}
+E(n_main)$weight <- main$n
+mat <- as_adjacency_matrix(n_main, attr = "weight",sparse = F)
+adj_main <- rbind(mat,t(mat)) 
+# we want to consider both incoming and outgoing exchanges between universities and so we are also including the transpose
+disimil <- as.dist(1 - cor(adj_main)) 
+clusdisimil <- hclust(disimil)
+```
+
+```{r}
+m <- cor(adj_main)
+m[1:10,1:10]
+```
+
+```{r}
+# Create a dendrogram and plot it
+clus6 = cutree(clusdisimil,k= 6)
+nclus= 6
+color_list=rep(colors,nclus/length(colors))
+plot.fan <- function(clusdisimil, nclus=6) {
+  palette <- c("#899DA4", "#C93312", "#F1BB7B", "#DC863B","#9A8822", "#F5CDB4")[1:nclus]
+  clus    <-cutree(clusdisimil,nclus)
+  X <- as.phylo(clusdisimil)
+  edge.clus <- sapply(1:nclus,function(i)max(which(X$edge[,2] %in% which(clus==i))))
+  order     <- order(edge.clus)
+  edge.clus <- c(min(edge.clus),diff(sort(edge.clus)))
+  edge.clus <- rep(order,edge.clus)
+  plot(X,type='fan',
+       tip.color=palette[clus],
+       edge.color=palette[edge.clus],
+       label.offset=0.1,
+       rotate.tree = -125,
+       no.margin=TRUE, 
+       cex=0.40)  
+}
+plot.fan(clusdisimil, 6)
+
+```
+
+
+
+```{r}
+# install.packages("rworldmap")
+library(rworldmap)
+main_map <- data.frame(as_edgelist(n_main, names = TRUE))
+main_map$weight <- main$n
+metad <- data.frame("name"=V(n_main)$name, 
+                   "lon"= main_selected_attr$Longitude,  
+                   "lat"=main_selected_attr$Latitude)
+
+g <- graph.data.frame(main_map, directed=TRUE, vertices=metad)
+E(g)$color <- "brown"
+E(g)$width <- E(g)$weight*10
+lo <- as.matrix(metad[,2:3])
+```
+
+```{r}
+nclus= 6
+clus<- cutree(clusdisimil,nclus)
+library('RColorBrewer')
+pal3 <- brewer.pal(6, "Paired")
+newmap <- getMap(resolution = "low")
+plot(newmap,
+     xlim = c(-10, 25),
+     ylim = c(28, 71),
+     asp = 1)
+plot(g, 
+     layout=lo, 
+     add = TRUE, 
+     edge.color='#F1BB7B',
+     vertex.size=75,
+     edge.arrow.size=0.05,
+     edge.width = 0.0015*E(g)$width,
+     arrow.width=0.01,
+     vertex.label=NA,
+     vertex.color = pal3[clus],
+     vertex.frame.color= 'black',
+     rescale = FALSE)
+legend("topright", 
+       legend=c('Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Block 6'),
+       cex=0.6,
+       col = pal3[(1:6)],
+       border = "black",
+       pch = 19)
+```
+############################################################################################################
+############################################################################################################
+############################################################################################################
+QUESTION 5
+
+```{r}
+library(ergm)
+library(ergMargins)
+```
+
+```{r}
+coefs <- c(-4.7409930, 0.3329028, 0.3895257, 0.0870115, -0.0016359, 0.5420552, 0.2099600, 2.5899157, 0.5478822)
+stderror <- c(0.0576203, 0.0578418, 0.0419288, 0.0415069, 0.0002128, 0.0829627, 0.0416916, 0.0657558, 0.0204300)
+coef_names <- c('edges', 'nodeifactor.region.Eastern.Europe', 'nodeifactor.region.Southern.Europe', 'nodeifactor.region.Western.Europe', 'nodeicov.rank_ranked', 'nodeicov.staff_scaled', 'nodeicov.POI_scaled', 'mutual', 'gwesp.fixed.0.8')
+names(coefs) <- coef_names
+names(coef_names) <- coef_names
+
+# compute odds ratios
+or <- exp(coefs)
+
+# compute confidence intervals
+lci <- exp(coefs-1.96*stderror) # lower confidence interval
+uci <- exp(coefs+1.96*stderror) # upper confidence interval
+
+# combine into a table displaying odds ratios with confidence intervals
+odds_ratios <- cbind(round(lci, digits=4), round(or, digits=4), round(uci, digits=4))
+colnames(odds_ratios) <- c("Lower", "OR", "Upper")
+print(odds_ratios)
+
+```

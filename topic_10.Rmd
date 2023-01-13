@@ -1,0 +1,426 @@
+---
+output:
+  pdf_document: default
+  html_document: default
+---
+--
+title: "Week 10 Problem Set"
+output:
+pdf_document: default
+html_document: default
+---
+##########################################################################################
+INSTRUCTIONS
+We’ll work again with the Village 35 network data again this week, adding in some additional information (you can download all the files below). We'll continue to use the adjacency matrices for the tie types that we've used previously:
+
+adj_borrowmoney_HH_vilno_35: "If you suddenly needed to borrow Rs. 50 for a day, whom would you ask?"
+adj_lendmoney_HH_vilno_35: "Who do you trust enough that if he/she needed to borrow Rs. 50 for a day you would lend it the him/her?"
+adj_keroricecome_HH_vilno_35: "Who would come to you if he/she needed to borrow kerosene or rice?"
+adj_keroricego_HH_vilno_35: "If you needed to borrow kerosene or rice, to whom would you go?"
+
+And we'll add in some additional tie types, as well: 
+adj_giveadvice_HH_vilno_35: "Who comes to you for advice?"
+adj_helpdecision_HH_vilno_35: "If you had to make a difficult personal decision, whom would you ask for advice?"
+adj_medic_HH_vilno_35: "If you had a medical emergency and were alone at home, whom would you ask for help in getting to a hospital?"
+adj_visitcome_HH_vilno_35: "Who visits your house in his or her free time?"
+adj_visitgo_HH_vilno_35: "In your free time, whose house do you visit?"
+
+Plus we'll use an adjacency matrix showing whether or not two households are related to one another (i.e., kinship ties between households) (“adj_rel_HH_vilno_35.csv”). Use all 9 of the support ties to create a single weighted network where the edge weight reflects the number of support ties between households (not including the kinship ties, and including the isolates), and create another network with only the kinship ties (which you will use as an edge covariate to predict the merged support network). As you'll see below, we need you to provide us with some of your output, in addition to the R code. You can do this by providing us with additional PDF files (as described below), or submit a knitted RMarkdown HTML or PDF document containing all of the relevant output (along with the straight .Rmd file).
+##########################################################################################
+
+```{r}
+getwd()
+knitr::opts_knit$set(root.dir = "/Desktop/Network Analysis/Week 10")
+# install.packages("ergMargins")
+library(network)
+library(intergraph)
+library(sna)
+library(ergm)
+library(igraph)
+library(ergMargins)
+```
+
+```{r}
+relatives <- network(read.csv("adj_rel_HH_vilno_35.csv", header = FALSE, as.is = TRUE, sep=";"))
+```
+
+```{r}
+bor <- read.csv("adj_borrowmoney_HH_vilno_35.csv", header = FALSE, as.is = TRUE, sep=";")
+lend <- read.csv("adj_lendmoney_HH_vilno_35.csv", header = FALSE, as.is = TRUE, sep=";")
+kercome <- read.csv("adj_keroricecome_HH_vilno_35.csv", header = FALSE, as.is = TRUE, sep=";")
+kergo <- read.csv("adj_keroricego_HH_vilno_35.csv", header = FALSE, as.is = TRUE, sep=";")
+helpdecision <- read.csv("adj_helpdecision_HH_vilno_35.csv", header=FALSE, as.is = TRUE, sep=";")
+giveadvice <- read.csv("adj_giveadvice_HH_vilno_35.csv", header=FALSE, as.is = TRUE, sep=";")
+medic <- read.csv("adj_giveadvice_HH_vilno_35.csv", header = FALSE, as.is = TRUE, sep=";")
+visitcome <- read.csv("adj_visitcome_HH_vilno_35.csv", header = FALSE, as.is = TRUE, sep=";")
+visitgo <- read.csv("adj_visitgo_HH_vilno_35.csv", header = FALSE, as.is = TRUE, sep=";")
+```
+
+```{r}
+all <- bor + lend + kercome + kergo + helpdecision + giveadvice + medic + visitcome + visitgo
+class(all)
+```
+We see that the aggregated network data is a data frame, we must convert it into a network object. 
+
+```{r}
+meta <- read.csv("vil35_meta.csv", header = TRUE, as.is = TRUE, sep=";")
+```
+
+
+```{r, warning=FALSE}
+n_all <- graph.adjacency(as.matrix(all), mode = "undirected", weighted = TRUE)
+V(n_all)$caste <- meta$castesubcaste
+V(n_all)$religion <- meta$hohreligion
+V(n_all)$religion <- ifelse(V(n_all)$religion == 1, "Hinduism",
+                           ifelse(V(n_all)$religion == 2, "Islam", 3))
+V(n_all)$rooms <- meta$room_no
+net <- asNetwork(n_all)
+summary(net, print.adj = FALSE, mixingmatrices = TRUE)
+```
+
+Using the the methodology by Goodreau et al. (2008), we have obtained descriptive statistics about the network structure. We see that the network is undirected, it contains 206 vertices and 598 edges. The density of the network is 0.0283, meaning that out of approx. 32 possible edges, only 1 is realized. Next, we see the attribute names of network members. In this case, we have the following 3 vertex attributes: 
+
+1. caste: categorical variable outlining to what caste the network member belongs, i.e. Forward Caste (GENERAL), Scheduled Caste, Other Backwards Caste (OBC), Scheduled Tribe, Minorities (MINORITY). We see that Other Backwards Caste is the most prevalent caste group in the village, followed by minorities and Scheduled Tribe. The Forward Caste and Scheduled Caste are the least common groups.
+
+2. religion: discrete variable, either Hinduism (religion = 1), Islam (religion = 2) or Christianity (religion = 3). We observe that Hinduism is the most prevalent religious group in the village with 161 followers, followed by Islam with 45 followers. There are no Christians in the village.
+
+3. rooms: proxy of household wealth, continuous variable, ranging from 1 to 8.
+
+Finally, there is a section for edge attributes. We see the relative weights of the edges, meaning the number of concurrent ties between 2 vertices. The minimum weight is 1, the maximum weight is 9. 
+
+##########################################################################################
+QUESTION 1
+Fit an ERGM including terms for: caste homophily, religious homophily, wealth (the number of rooms), and kinship relations (using edgecov(the_name_you_give_to_the_kinship_network)) and print the model results with summary(). [1 point]
+##########################################################################################
+
+
+```{r}
+table(net %v% "rooms")
+```
+There are 2 ways in which we can account for node-level terms (i.e. personal characteristics) when evaluating probability of a tie; either via the term NODECOV or via the term NODEFACTOR. Each of these 2 terms has different interpretation and is suitable for different variable type. NODECOV is usually used for continuous variables, whereas NODEFACTOR is used primarily for discrete variables. Since there is only a limited number of room # values, we could theoretically use both terms. 
+
+The advantage of NODEFACTOR lies in that it is more easily interpretable. It yields a coefficient value for each number of rooms, except for the reference category (to avoid the dummy variable trap). So it accounts for the posibility that households with each number of rooms (1,2,3, ..., 8 rooms) have different propensity to exchange favors with each other. 
+
+In contrast, the NODECOV term assumes that there is some trend such that as households have more rooms, they are less or more likely to exchange favors. But this trend is conceptually problematic. For example, it is possible that households with 3 rooms exchange more/less favors than households with 1 room, but as the number of rooms increases to 7 or 8 this upward trend might halt; and the NODECOV term cannot account for this. In addition, when converting the ergm coefficient values into expected probability of a tie between two households, the NODECOV term treats equally the effect of 1st household having 3 rooms and 2nd household having 1 room as it treats the effect of both households having 2 rooms each. Therefore, to depict a non-linear relationship between room # and favour exchange, plus to account for the 2,2 room distribution, it would be better to use the NODEFACTOR term (Harris, 2018).
+
+But in the table above, we see that the number of rooms in the village does not have a uniform distribution, there are only 2 households in the village that have 6, 7, 8 rooms each. This makes it difficult to use the term NODEFACTOR in the ERGM estimation. When there are so few observations, we cannot add factor terms for each number of rooms. As a result, we will instead use the NODECOV term that we see the number of rooms as a continuous variable that has a constant effect across the whole range of room numbers.
+
+```{r}
+ergm_1 <- ergm(net ~ edges + nodematch("caste") + nodematch("religion") + nodecov("rooms") + edgecov(relatives))
+summary(ergm_1)
+
+# ergm(formula = net ~ edges + nodematch("caste") + nodematch("religion") + 
+#     nodecov("rooms") + edgecov(relatives))
+# 
+# Iterations:  6 out of 20 
+# 
+# Monte Carlo MLE Results:
+#                    Estimate Std. Error MCMC % z value Pr(>|z|)    
+# edges              -5.07390    0.16981      0 -29.880   <1e-04 ***
+# nodematch.caste     0.82624    0.09694      0   8.524   <1e-04 ***
+# nodematch.religion  0.61175    0.12771      0   4.790   <1e-04 ***
+# nodecov.rooms       0.12573    0.02299      0   5.470   <1e-04 ***
+# edgecov.relatives   4.00378    0.21115      0  18.961   <1e-04 ***
+# ---
+# Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+# 
+#      Null Deviance: 29272  on 21115  degrees of freedom
+#  Residual Deviance:  4795  on 21110  degrees of freedom
+#  
+# AIC: 4805    BIC: 4845    (Smaller is better.) 
+
+```
+
+##########################################################################################
+QUESTION 2
+Interpret the terms of the ERGM. Report the odds ratio associated with each term (except the edges term). Do so in prose, so that we can check your comprehension. How do these odds ratios align with what we’ve found while analyzing the homophily of this network in previous weeks? [2 points]
+##########################################################################################
+
+```{r}
+or <- exp(ergm_1$coef) 
+or
+
+       #       edges    nodematch.caste nodematch.religion      nodecov.rooms  edgecov.relatives 
+       # 0.006257965        2.284705053        1.843645930        1.133973197       54.804738033 
+```
+
+First, we see that the coefficient for the edges is significant and negative, indicating that the density of the network is below 50% (edges term of 0 would represent 50% or 0.5 density) (Harris, 2018). In addition, we see that all other coefficients are highly significant (p < 0.001) and they are all positive. The term NODECOV for the node-level attribute 'number of rooms' (attr = room #) considers the sum of attr(i) and attr(j) for all edges (i,j) in the network (R, 2021). Based on the significant coefficient value of NODECOV, we conclude that the combined room number among 2 households involved in a dyad has an impact on the likelihood of an edge between them. Because NODECOV is a numeric predictor term and its coefficient value is positive, we conclude that as any 2 households have more rooms among them, they are more likely to exchange favors. A one-unit increase in the number of rooms that are shared in a dyad increases the likelihood of a tie being present among the two households 1.13 times, after controlling for familiar ties, caste and religious homophily. 
+
+In a social network, it is also possible that the relation itself might be modified by a covariate. For example, edges might be predicted by familiar ties in the village. Two households that are related to one another might be more likely to exchange favors, relative to unrelated households in the village (Luke, 2015). This hypothesis is tested using the term EDGECOV. Since we get a high and highly significant value of EDGECOV in the ERGM model, we conclude that familiar ties are indeed a significant predictor of edges. According to our model, 2 households which are related are 54.80 times more likely to have an edge between them, relative to unrelated households.
+
+We also observe a clear homophily on the basis of caste membership in the network, i.e. households belonging the same caste are more likely to form ties with one another. The odds ratio of 2.28 implies that 2 same-caste households are 2.28 times more likely to form a tie relative to households from different caste groups, after controlling for kinship ties, religious homophily and wealth (room number). Similarly, we see significant homophily on the basis of religion. The religious homophily coefficient implies that 2 households taken from the same religious group are 1.84 times more likely to form a tie relative to different-religion households, after controlling for kinship ties, caste homophily and wealth (room number). 
+
+These findings are somewhat congruent with what we concluded in W5, when analyzing food and money borrowing/lending networks in the village. Back then, we found strong positive assortativity by religion and strong positive assortativity by caste membership. But back then we also found that homophily on the basis of religion was a more important marker of distinction, relative to homophily on the basis of caste membership. Here, on the other hand, we find caste membership to be a more important determinant. 
+
+When we analyzed the same 4 networks using community detection algorithms in W7, we found that some caste groups are more assortative than others. Based on the blockmodel function, the Scheduled Caste group had the highest probability of self ties (with a 19% probability of ties being to other SC households), followed by the Muslims (the Minority group, 13%) and the Scheduled Tribe group (12%). In contrast,  members of the Other Backwards Caste were almost as likely to form a tie with members of the General Caste, as they were likely to form a tie among themselves. Also, Muslims were more assortative by religion relative to Hinduists in the village. To account for this, we could extend the analysis by also considering differential levels of homophily for all the different caste groups and different religious groups. By specifying differential homophily for all the caste groups, homophily term nodematch could be included seperately for Forward Caste (GENERAL), Scheduled Caste, Other Backwards Caste (OBC), Scheduled Tribe and Minorities (MINORITY). But, unfortunately, because of a religious and caste membership overlap, we cannot specify homophily term nodematch separately for each religious group in the village as well. The Minority caste is composed purely of Muslim households, and so including both a homophily term for Minority and for Muslim religion would lead to perfect multicollinearity, i.e. the homophily coefficient for Muslim households would be a linear combination of the Minority term (Harris, 2018). So I have excluded the homophily among Muslim households and then I ran an ERGM with all the other differential homophily terms for caste and religion. The model and the results are included below. Based on the AIC and BIC, this model with differential homophily terms is a better fit of the observed network. 
+
+```{r}
+ergm_2 <- ergm(net ~ edges + nodematch("caste", diff = T) + nodematch("religion", diff = T, keep = 1) + nodecov("rooms") + edgecov(relatives))
+summary(ergm_2)
+
+# ergm(formula = net ~ edges + nodematch("caste", diff = T) + nodematch("religion", 
+#     diff = T, keep = 1) + nodecov("rooms") + edgecov(relatives))
+# 
+# Iterations:  6 out of 20 
+# 
+# Monte Carlo MLE Results:
+#                                Estimate Std. Error MCMC % z value Pr(>|z|)    
+# edges                          -5.16131    0.17406      0 -29.653   <1e-04 ***
+# nodematch.caste.GENERAL         0.43130    0.22839      0   1.888   0.0590 .  
+# nodematch.caste.MINORITY        1.68310    0.16502      0  10.199   <1e-04 ***
+# nodematch.caste.OBC             0.30292    0.14488      0   2.091   0.0365 *  
+# nodematch.caste.SCHEDULE CASTE  2.19379    0.19289      0  11.373   <1e-04 ***
+# nodematch.caste.SCHEDULE TRIBE  1.08963    0.16933      0   6.435   <1e-04 ***
+# nodematch.religion.Hinduism     0.62047    0.12772      0   4.858   <1e-04 ***
+# nodecov.rooms                   0.14081    0.02368      0   5.945   <1e-04 ***
+# edgecov.relatives               3.90301    0.21579      0  18.087   <1e-04 ***
+# ---
+# Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+# 
+#      Null Deviance: 29272  on 21115  degrees of freedom
+#  Residual Deviance:  4723  on 21106  degrees of freedom
+#  
+# AIC: 4741    BIC: 4812    (Smaller is better.) 
+```
+
+##########################################################################################
+QUESTION 3
+Report the expected probability of a tie between two households with the following characteristics: 
+(1) different caste, same religion, each household with 2 rooms (so, total of 4 rooms), not related; 
+(2) same caste, same religion, each household with 2 rooms (so, total of 4 rooms), not related; 
+(3) same caste, same religion, each household with 2 rooms (so, total of 4 rooms), related. [1.5 points]
+##########################################################################################
+
+To answer these questions, we must use the 1st ERGM model (ergm_1), as the question does not ask about the differential homophily trends among different caste and religious groups. 
+
+```{r}
+estoprob <- function(logit) {
+  exp(logit)/(1+exp(logit))}
+estoprob(sum(c(1,0,1,4,0)*(ergm_1$coef)))
+```
+
+For the continuous predictor nodecov, the ergm_1 coefficient represents the sum of the room characteristic for the 2 households in the dyad. Since one household has 2 rooms and the other household also has 2 rooms, then the overall coefficient for the population is 2+2 = 4. 
+
+In the baseline model with just an intercept, the probability of a tie/network density is 0.02832. So there is a 2.83% probability that 2 households from the village have a tie with one another. In contrast, our current model predicts that two households who have different castes but same religion, are unrelated, each with 2 rooms, have a lower tie probability than the baseline; i.e. they have a 1.87% probability of a tie. 
+
+```{r}
+ergm <- ergm(net ~ edges)
+summary(ergm)
+exp(ergm$coef)/(1+exp(ergm$coef))
+gden(net)
+# in the baseline model with just the intercept, the probability of a tie/network density is 0.02832.
+```
+
+
+```{r}
+estoprob(sum(c(1,1,1,4,0)*(ergm_1$coef)))
+```
+So, our ergm_1 model predicts that two households who belong to the same caste and same religious group, are unrelated, each of the 2 households have 2 rooms, are predicted to have a tie 4.18% of the time. Said differently, they have a 4.18% probability of a tie. 
+
+```{r}
+estoprob(sum(c(1,1,1,4,1)*(ergm_1$coef)))
+```
+We see that relatedness is the most important predictor of favor exchange ties in the network. Two households who are related, belong to the same caste and same religious group and have 2 rooms each are predicted to have a tie 70.49% of the time. Said differently, they have a 70.49% probability of a tie. 
+
+##########################################################################################
+QUESTION 4
+Fit a new ERGM with all of the same terms as above, but additionally with structural terms for degree (include degree(0)) and shared partners (include gwesp(0.5, fixed = TRUE) and gwdsp(0.1, fixed = TRUE)). These additional control terms were included to try to help improve the model fit. Because it can take a few moments for this to run, please (1) include but comment out the lines of code that would run and summarize the model, (2) include the summary output for the model as a commented out chunk of text in your R file (to do this easily, you should just copy the summary output, paste it into your R file, highlight those lines and then select “Comment/Uncomment Lines” from the Code dropdown menu in RStudio – this should put a # in front of each of the lines). Generate the goodness of fit plots (looking at degree, edge-wise shared partners, dyad-wise shared partners, and mean geodesic distance). Plot the observed network next to a simulation of the network from this new ERGM. Include both the GOF output and the two plotted networks as PDF files as part of your submission. How are we doing in modelling the observed network? Are you satisfied with this? What are we not getting well? How might you consider changing the model? [2.5 points]
+##########################################################################################
+
+```{r}
+
+# ergm_3 <- ergm(net ~ edges + nodematch("caste") + nodematch("religion") + nodecov("rooms") + edgecov(relatives) + degree(0) + gwesp(0.5, fixed = TRUE) + gwdsp(0.1, fixed = TRUE))
+# summary(ergm_3)
+
+# ergm(formula = net ~ edges + nodematch("caste") + nodematch("religion") + 
+#     nodecov("rooms") + edgecov(relatives) + degree(0) + gwesp(0.5, 
+#     fixed = TRUE) + gwdsp(0.1, fixed = TRUE))
+# 
+# Iterations:  6 out of 20 
+# 
+# Monte Carlo MLE Results:
+#                    Estimate Std. Error MCMC % z value Pr(>|z|)    
+# edges              -5.27015    0.20253      0 -26.022  < 1e-04 ***
+# nodematch.caste     0.44964    0.06207      0   7.244  < 1e-04 ***
+# nodematch.religion  0.27669    0.07455      0   3.712 0.000206 ***
+# nodecov.rooms       0.03739    0.01523      0   2.456 0.014063 *  
+# edgecov.relatives   3.65829    0.21615      1  16.925  < 1e-04 ***
+# degree0             0.94937    0.31274      0   3.036 0.002400 ** 
+# gwesp.fixed.0.5     1.44460    0.07256      0  19.909  < 1e-04 ***
+# gwdsp.fixed.0.1    -0.04991    0.01257      0  -3.972  < 1e-04 ***
+# ---
+# Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+# 
+#      Null Deviance: 29272  on 21115  degrees of freedom
+#  Residual Deviance:  4018  on 21107  degrees of freedom
+#  
+# AIC: 4034    BIC: 4098    (Smaller is better.) 
+```
+
+Firstly, we see that that the AIC and BIC coefficients in the current ergm_3 model are substantially lower compared to the information criteria of ergm_1 and ergm_2 in previous questions. When it comes to information criteria, lower is always better and so our AIC/BIC values suggest that adding the 3 terms has indeed improved the model fit. But in line with Harris (2008) recommendation of GOF evaluation in ERGMs that include dependence terms (such as GWESP and GWDSP), we will later also evaluate goodness of fit by comparing structural characteristics of the simulated/real networks.
+
+Social networks usually have high transitivity and high triadic closure. There are 2 geometrically weighted terms that capture these social network characteristics - the GWESP and the GWDSP. Relative to the triangles() term  - which was frequently used in earlier models of social networks - the geometrically weighted terms are much more resilient to model degeneracy. That means that they are more resilient to situations in which the simulated networks look nothing like the true empirical networks (in most cases of degeneracy, disproportionate probability mass is placed either on the complete, fully connected or empty, entirely unconnected networks) (Cranmer and Desmarais, 2011). 
+
+In our ergm_3, both GWESP and GWDSP are significant at the 0.001 level. The significant, positive value of the GWESP coefficient implies that there are more triangles than expected in a random graph that fits all the other constraints (Ready and Power, 2018). As for the GWDSP term, it usually counts shared partnerships for all dyads regardless of whether the dyads form a tie. But when both GWDSP and GWESP are present in the model together, GWDSP accounts only for the distribution of shared partners in unconnected dyads (Harris, 2018). 
+
+It measures the extent to which a network shows a tendency of nodes not directly linked to one another to be indirectly tied. The significant, positive value of the coefficient implies that there are more shared partners in unconnected dyads than expected by a random graph that fits all the other constraints. Put differently, there is a substantial multi-connectivity among nodes that are not directly tied. 
+
+Clearly, the more shared partners 2 nodes in a network have, the higher the probability of a tie between them. But this probability increases at a diminishing rate. This is a typical occurence in most social networks. For example, Newman (2001) found that two physicists who hadn’t collaborated before were 45 times more likely to collaborate in the future if they had even just one mutual collaborator. But when this number of mutual collaborators was already high - e.g. when the two physicists had 19 mutual collaborators already, then having 1 extra mutual collaborator (i.e. 20) brought little increase in terms of the likelihood of their collaboration. This diminishing rate is controlled by the α value in geometrically-weighted attributes. Alpha values are generally positive but less than 1 (e.g. for GWESP in our model was artificially set to be α=0.5). With respect to the GWESP, this means that the log-odds of 2 households forming a favor exchange tie rise monotonically and sub-linearly as they have greater number of indirect ties in common. 
+
+```{r}
+sum(degree(n_all)==0)
+```
+
+As for the degree() parameter, its function is very closely related to the specification of the configuration model. The degree(0) specifies that we seek to have the same number of isolates in the model as there are isolates in the observed favour exchange network. Since there are 25 isolates in the favour exchange network, we also request 25 isolates in the simulated networks.
+
+```{r}
+sim3 <- simulate(ergm_3)
+sim3
+goftest <- gof(ergm_3 ~ degree + dsp + esp + distance)
+pdf(file = "/Desktop/Network Analysis/Week 10/11910_MY461_PS10.pdf",  
+    width = 6, 
+    height = 4)
+plot(goftest)
+par(1,2)
+gplot(sim3, vertex.col = "red", edge.col = "grey", main = "Simulated Network", usearrows = FALSE)
+gplot(net, vertex.col = "blue", edge.col = "grey", main = "Real Network", usearrows = FALSE)
+dev.off()
+```
+
+GOODNESS OF FIT DIAGNOSTICS
+We can use the output of an ERGM to simulate networks as the GOF assessments are inherently doing, and see how well those particular simulated networks align with the observed network. The goodness of fit plots for degree, minimum geodesic distance, dyad-wise and edge-wise shared partners compare the proportion of nodes in the observed network with the proportion of nodes in the simulated networks with the same characteristics. If the estimated ERGM is a good fit to the observed data, then networks simulated from its MLE should resemble the connectivity structure of the observed data. In these plots, the thick black line represents the observed favour exchange network and the grey lines represent the 95% confidence intervals of the simulated network measures. When the the black line falls between the gray lines, the simulated networks are capturing the characteristics of the observed network. The boxplots summarize the mean and interquartile range of the measures in the simulated networks (Harris, 2018). 
+
+DEGREE DISTRIBUTION
+With regards to the degree distribution of the real vs. simulated networks, the thick solid line represents the degree distribution in the real network, i.e. it shows the proportion of nodes in the real network with each given degree listed on the x-axis. We see that the black solid line stays within the boundaries of the grey solid lines for some proportion of the degree range. But the simulated ERGM networks fail to represent (i.e. strongly overestimate) the proportion of nodes that have degrees 6, 7 and 9 in the real favour exchange network. And, also, the simulated networks fail to represent (i.e. vastly underestimate) the proportion of nodes that have degrees 1 and 16. Also for degree 12, the solid black line lies on the upper boundary of the confidence interval. Taken together, the simulated networks do not capture the degree distribution of the observed network very well. 
+
+EDGE-WISE SHARED PARTNERS
+Also the graph of edge-wise shared partners suggests a poor fit of the ERGM. Two households A and B have an edgewise shared partner when they are connected to each other and they are also both connected to a third household C. If A and B were also connected to node D, then A and B would have two edgewise shared partners. In other words, the number of edge-wise partnerships corresponds to the number of triangles that 2 connected households share (Ready and Power, 2018). The edge-wise shared partnership graph depicts the proportion of 2 connected households (on the y-axis) that form any given number of triangles k, i.e. they have any number k of shared ties with other households (on the x-axis). We see that the simulated networks overestimate the proportion of 2 connected households in the network that have either 2 or 3 ties in common and it underestimates the proportion of connected households who have 1, 4, 5, 6, 7, 8 and 9 ties in common. 
+
+DYAD-WISE SHARED PARTNERS
+In contrast, the ERGM model appears to do a great job in predicting dyad-wise shared partnerships. Two households A and B have an dyadwise shared partner when they are not connected to each other directly, but they are both connected to a third household C. If A and B households are also connected to node D, then A and B have two dyadwise shared partners. We see that the simulated networks predict well the proportion of disconnected households in the network that have shared ties with another (the number of ties that the 2 not-directly connected households share is depicted on the x-axis). In the graph, we observe that the solid black line, representing the dyad-wise shared partners in the real network, is mostly tied within the 95% confidence interval of the proportion of dyads with k dyad-wise shared partners in the simulated networks.
+
+MINIMUM GEODESIC DISTANCE
+The ERGM model also appears to predict the minimum geodesic distance relatively well. Here, the solid black line represents the proportion of dyads which have a specific minimum geodesic distance between them in the real network. We see that the black line stays within the boundaries of the 95% confidence interval of the minimum geodesic distance in the simulated networks throughout the x-axis values.
+
+HOW TO CHANGE THE MODEL
+Firstly, we might include additional degree terms to the ERGM model in order to account for the fact that the degree distribution of the simulated models does not correspond well to the degree distribution in real network data, especially for degrees 1, 6, 7, 9, 12 and 16. Therefore, we might include terms degree(1), degree(6), degree(7), degree(9), degree(12) and degree(16) to ensure a more appropriate degree distribution in the ERGM models. 
+
+Furthermore, we might want to change the distribution of triangles in the network. We would ideally want to decrease the proportion of connected households in the network that have only few edgewise partners (form few triangles) and increase the proportion of connected households that have many edge-wise shared partners (form many triangles). However, this is difficult to do. For example, the triangles() term only ensures that the number of triangles in the simulated networks corresponds to the number of triangles in the real network. In addition, the triangle term is susceptible to model degeneracy. Furthermore, the GWESP term is mainly concerned with ensuring that ties that close triangles are more prevalent than ties that do not close triangles. It gives more weight to those connected households that have only fewer partners, relative to the geometrically-unweighed analogues of this metric ESP (Simpson et al. 2011). 
+
+FURTHER DISSATISFACTION WITH THE MODEL
+A further concern is that the used ERGM function does not account for the fact that there are weighted edges in our network. To account for weighted edges, we should use weighted ERGM function ERGM.COUNT. It is specifically suited to model networks whose dyad values are counts (e.g. counts of conversations, messages, other interactions). In our network, we have counts of the number of different favour exchanges among any 2 households (Krivitsky et al. 2012).
+
+##########################################################################################
+QUESTION 5
+What other terms might you consider including in an ERGM? These could be other terms involving the attributes we are already including, or could involve attributes that we haven’t included yet (look back to the meta data frame with other vertex covariates to see what other terms exist). Give a rationale for two alternative terms that you propose for inclusion in the ERGM. Run a new ERGM that includes at least one of your proposed additional terms. Again, comment out the line that would define this new ERGM, and include the summary of the model as done for question 4. How does the new term(s) change the model results (comparing to the ERGM from question #4)? Does your term(s) have a strong effect on the likelihood of a tie? How does it affect the other terms in the model? [3 points]
+##########################################################################################
+
+In Question 4, the decay parameter values for GWESP and GWDSP were explicitly specified and we were not provided with any evidence that these particular α values yield the best fit (lowest AIC, BIC, and log-likelihood values). When it comes to GWESP, the alpha values indicate how quickly the increasing number of edgewise shared partners should be decreasing. High values of alpha (close to 1) suggest slower decay, relative to lower values of alpha which suggest faster decay (close to 0). In other words, the closer the alpha values are to 1, the greater the likelihood that a very high number of indirect ties of length 2 is present between directly tied actors (Cranmer et al. 2017). In Question 4, the ERGM model included GWESP(α = 0.5, fixed = TRUE). But in the edgewise shared partnership GOF figure, we saw that the model underestimated the prevalence of directly tied households with high number of concurrent indirect ties of length 2. And, conversely, it overestimated the prevalence of directly tied households that had only few indirect ties of length 2. I, therefore, hypothesize that a different, and particularly higher α value might better characterize the real favour exchange network. There are 2 general approaches to changing the decay parameter - one is to relax the assumption that the α is fixed at a specified value; fixed = FALSE (Hunter et al. 2008). But this technique is very computationally expensive. The other method, which is often recommended, continues to fix α but it also specifies different α values, starting at 0.1 and proceeding in 0.1 step intervals to 1 (0.1, 0.2, 0.3, etc.). 
+
+I have run models with different α values to evaluate which of the α decay parameters in the GWDSP function provides the best fit of the data:
+ergm <- ergm(net ~ edges + nodematch("caste") + nodematch("religion") + nodecov("rooms") + edgecov(relatives) + degree(0) + gwesp(α, fixed = TRUE) + gwdsp(0.1, fixed = TRUE))
+
+Harris (2008) mentions that although graphic measures of fit are preferred for dependence models such as this one, AIC and BIC are usually consistent with the graphic measures and are well-suited for the selection of alpha value. The BIC and AIC values for each selected α value were: 
+
+α = 0.1
+AIC   4254
+BIC   4317
+
+α = 0.2
+AIC   4196
+BIC   4260
+
+α = 0.3
+AIC   4142
+BIC   4206
+
+α = 0.4
+AIC   4085
+BIC   4149
+
+α = 0.5
+AIC   4034
+BIC   4098
+
+α = 0.6
+AIC   4001
+BIC   4065
+
+α = 0.7
+AIC   3958
+BIC   4022
+
+For α = {0.8, 0.9, 1}, 
+Error in ergm.MCMLE(init, nw, model, initialfit = (initialfit <- NULL), : MCMLE estimation stuck. There may be excessive correlation between model terms, suggesting a poor model for the observed data. If target.stats are specified, try increasing SAN parameters.
+
+Therefore, α = 0.7 yields the best fit for the network data. And so, I propose including gwesp(0.7, fixed = TRUE), instead of the previously included gwesp(0.5, fixed = TRUE), into the ERGM model.
+
+Another attribute that I propose concerns node-level term prominence. Anthropological research from Tamil Nadu in India reports that being a prominent member of a community (proxied by whether the individual ever held a position in the informal village committee or the local government panchayat) increases the involvement of the individual in social support networks, holding other attributes such as caste, gender, religion and kinship constant (Power, 2017). Related to this research, our ERGM model might also provide some measure of node-level prominence to provide a better fit of the favour exchange data. Although our meta data frame does not include village committee membership, it includes a node-level variable leader. It takes on the value leader=1 if the household has a village leader, 0 otherwise. This variable is, therefore, strongly related to household prominence. Since the leader variable is categorical, its impact on the network ties might be modelled by using the nodefactor attribute. The final ERGM model with 1 changed and 1 added attribute is below:
+
+```{r}
+# ergm_25 <- ergm(net_2 ~ edges + nodematch("caste") + nodematch("religion") + nodecov("rooms") + nodefactor("leader") + edgecov(relatives) + gwesp(0.7, fixed = TRUE) + gwdsp(0.1, fixed = TRUE))
+# summary(ergm_25)
+# 
+# ergm(formula = net_2 ~ edges + nodematch("caste") + nodematch("religion") + 
+#     nodecov("rooms") + nodefactor("leader") + edgecov(relatives) + 
+#     gwesp(0.7, fixed = TRUE) + gwdsp(0.1, fixed = TRUE))
+# 
+# Iterations:  20 out of 20 
+# 
+# Monte Carlo MLE Results:
+#                      Estimate Std. Error MCMC % z value Pr(>|z|)    
+# edges               -5.260346   0.132046      1 -39.837  < 1e-04 ***
+# nodematch.caste      0.397223   0.063307      1   6.275  < 1e-04 ***
+# nodematch.religion   0.227544   0.043041      1   5.287  < 1e-04 ***
+# nodecov.rooms        0.015579   0.013707      1   1.137  0.25574    
+# nodefactor.leader.1  0.111811   0.043013      2   2.599  0.00934 ** 
+# edgecov.relatives    3.745958   0.226584      2  16.532  < 1e-04 ***
+# gwesp.fixed.0.7      1.250558   0.041181      0  30.368  < 1e-04 ***
+# gwdsp.fixed.0.1     -0.043081   0.005848      1  -7.366  < 1e-04 ***
+# ---
+# Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+# 
+#      Null Deviance: 29272  on 21115  degrees of freedom
+#  Residual Deviance:  3983  on 21107  degrees of freedom
+#  
+# AIC: 3999    BIC: 4063    (Smaller is better.) 
+```
+
+```{r}
+# vif.ergm(ergm_25)
+# Higher values indicate greater correlation.
+# VIF > 20 is concerning, VIF > 100 indicates severe collinearity.
+#      nodematch.caste nodematch.religion nodecov.rooms nodefactor.leader.1 edgecov.relatives gwesp.fixed.0.7 gwdsp.fixed.0.1
+# [1,]        4.896033           5.262872      1.324016            1.246232          1.622326        1.873892        1.650182
+
+```
+
+We see that the ergm_25 model has a lower AIC and BIC criteria relative to the ergm_3 model in Question 4, suggesting a better model fit. Due to evidence of excessive correlation among attributes for high values of the decay parameter (α = {0.8, 0.9, 1}), I also ran the Value Inflated Factor function for ERGM models. The VIF results seem to be within acceptable bounds of collinearity (VIF < 20). 
+
+```{r}
+# or25 <- exp(ergm_25$coef)
+# or25
+# 
+#  edges          nodematch.caste   nodematch.religion    nodecov.rooms     nodefactor.leader.1   edgecov.relatives     gwesp.fixed.0.7     gwdsp.fixed.0.1 
+#  0.005193508         1.487687659         1.255512258         1.015700822         1.118301117        42.349548711         3.492291490         0.957834037 
+```
+
+
+Both of the 2 introduced terms have significant impact on tie formation in the network. The term gwesp with decay parameter value 0.7 is significant at the 0.001 significance level. The positive value of the GWESP coefficient implies that there are more triangles than expected in a random graph that fits all the other constraints. The leader attribute is significant at the 0.01 level and it is also positive. According to this model, a household is 1.118301117 times as likely to have a tie if they are prominent (proxied by being a leader), relative to  if they are not prominent. 
+
+We also observe that introducing the 2 terms reduces the importance of node-level attribute nodecov on the probability of tie formation. In this model, if households have more rooms they are no more or less likely to have a tie than if they have fewer rooms (holding all the other significant attributes constant). But besides this node-level attribute nodecov, all other terms are relatively unaffected by the model change, except for minor changes in their coefficients. 
+
+##########################################################################################
+REFERENCES
+Cranmer, S. J., & Desmarais, B. A. (2011). Inferential network analysis with exponential random graph models. Political analysis, 19(1), 66-86.
+Cranmer, S. J., Leifeld, P., McClurg, S. D., & Rolfe, M. (2017). Navigating the range of statistical tools for inferential network analysis. American Journal of Political Science, 61(1), 237-251.
+Goodreau, S. M., Handcock, M. S., Hunter, D. R., Butts, C. T., & Morris, M. (2008). A statnet tutorial. Journal of statistical software, 24(9), 1.
+Harris, B. J. K. (2018). An Introduction to Exponential Random Graph Modeling.
+Hunter, D.R., Handcock, M. D. S., Butts, C.T., Goodreau, S. M., & Morris, M. (2008). ERGM: A Package to Fit, Simulate and Diagnose Exponential-Family Models for Networks. Journal of Statistical Software 24 (3), 1–29.
+Krivitsky, P. N., Handcock, M. S., Hunter, D. R., & Krivitsky, M. P. N. (2012). Package ‘ergm. count’. Journal of Statistics, 6, 1100-1128.
+Luke, D.A. (2015). Introducing Network Analysis in R. In A User’s Guide to Network Analysis in R (pp. 1-8). Springer, Cham.
+Newman, M. E. J. (2001). Clustering and preferential attachment in growing networks. Physical Review,64(2), 025102.
+Power, E. A. (2017). Social support networks and religiosity in rural South India. Nature Human Behaviour, 1(3), 1-6.
+Ready, E., &  Power, E. (2018). ERGM predictions and GWESP. Social Network Analysis for Anthropologists. GitHub.
+Simpson, S. L., Hayasaka, S., & Laurienti, P. J. (2011). Exponential random graph modeling for complex brain networks. PloS one, 6(5), e20039.
+The Statnet Development Team (2017). Introduction to Exponential-family Random Graph (ERG or p*) modeling with ERGM. Version 3.8.0.
