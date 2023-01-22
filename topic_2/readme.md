@@ -1,1 +1,1 @@
-This is a readme file to explain the code in topic_2.R
+This is a readme file to explain the code in topic_2.R.
