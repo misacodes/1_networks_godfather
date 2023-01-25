@@ -25,12 +25,22 @@ I then proceed to explore the network. The following function ...
 ```
 summary(mafia)
 ```
-... assures me that all vertex attributes have been assigned correctly to the characters. The following functions vcount and ecount tell me the number of vertices and realized edges:
+... assures me that all 5 vertex attributes have been assigned correctly to the characters, that the network has been correctly labelled as undirected. Then, the following functions tell me the number of vertices (35) and the number of realized edges (60), respectively:
 
 ```
 vcount(mafia)
 ecount(mafia)
 ```
+Finally, other descriptive functions are used also: 
+
+```
+degree(mafia)
+mean(degree(mafia))
+graph.density(mafia)
+```
+They uncover that Michael Corleone (21) and Don Corleone (14) have the greatest degree, i.e., the greatest number of on-screen dialogues. It seems women have dialogues much less frequently then men in the film. That can be further demonstrated in the following Overall, a character in the film is involved in approx. 3,43 degrees (dialogues).  The network has density of 0.1008403, that implies that approximately 10.08% of all potential network dialogues are realized. 
+# The diameter, i.e. longest geodesic path length, is 3.
 
 
-Nodes and edges
+
+
