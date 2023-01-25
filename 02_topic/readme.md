@@ -2,7 +2,7 @@
 In this assignment, I am analyzing the network of **Corleone family**, as outlined in **The Godfather (1972)** film directed by Coppola and co-written by Mario Puzo. I depict the Corleone Sicilian mafia network based on characters' **on-camera dialogues/appearances**. For example, if Michael Corleone and Sonny Corleone have a dialogue in the movie, they are connected in this network. Since I am focusing on on-camera dialogues, the depicted network is undirected (i.e., there cannot be an arrow pointing from one character to the next as dialogues are bi-directional by their nature).
 
 ### Assigning edge attributes
-I start by loading the necessary libraries (igraph and igraphdata) and by creating an **edgelist dataframe** (i.e., a dataframe of relationships in the network). For this, I use the *graph()* function.
+I start by loading the necessary libraries (igraph and igraphdata) and by creating an **edgelist dataframe** (i.e., a dataframe of relationships in the network). For this, I use the **graph()** function.
 
 ```
 graph(edges=c(...))
@@ -37,14 +37,14 @@ degree(mafia)
 mean(degree(mafia))
 graph.density(mafia)
 ```
-They uncover that **Michael Corleone (21)** and **Don Corleone (14)** have the greatest **degrees**, i.e., the greatest number of on-screen dialogues. It seems women have dialogues much less frequently then men in the film. That can be further demonstrated through the *adjacency matrix* described in the following code section. 
+They uncover that **Michael Corleone (21)** and **Don Corleone (14)** have the greatest **degrees**, i.e., the greatest number of on-screen dialogues. It seems women have dialogues much less frequently then men in the film. That can be further demonstrated through the **adjacency matrix** described in the following code section. 
 
 ```
 get.adjacency(mafia)
 get.adjacency(mafia, sparse = FALSE)
 ```
 
-Overall, a character in the film is involved in approx. **3,43 degrees (dialogues)**. The network has *density* of 0.1008403 which implies that approximately 10.08% of all potential network dialogues are realized. All potential dialogues would be realised if each individual character would talk to each other individual character in the movie. The **diameter**, i.e. longest geodesic path length, is 3. That means that at most 3 movie characters are connected through their shared dialogues (i.e., one talks to a second and the second talks to a third character).
+Overall, a character in the film is involved in approx. **3,43 degrees (dialogues)**. The network has **density** of 0.1008403 which implies that approximately 10.08% of all potential network dialogues are realized. All potential dialogues would be realised if each individual character would talk to each other individual character in the movie. The **diameter**, i.e. longest geodesic path length, is 3. That means that at most 3 movie characters are connected through their shared dialogues (i.e., one talks to a second and the second talks to a third character).
 
 
 ### Plotting the network
