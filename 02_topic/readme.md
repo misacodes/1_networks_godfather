@@ -48,7 +48,7 @@ Overall, a character in the film is involved in approx. **3,43 degrees (dialogue
 
 
 ### Plotting the network
-To plot the network graph, I am using the basic **plot()** function in this exercise. While doing so, I specify the size and color of each node, together with multiple other characteristics. The nodes are colour coded, according to their survival status at the end of the movie - dark red/brown if they are deceased at the end of the movie, blue if they survived till the end. The vertex size corresponds to the degree of each character - the greater the number of on-screen dialogue a given character has, the bigger the size of their vertex bubble. The resulting network graph plus all the R code can be found in this folder. 
+To plot the network graph, I am using the basic **plot()** function in this exercise. While doing so, I specify the size and color of each node, together with multiple other characteristics. The nodes are colour coded, according to the corresponding characters' survival status at the end of the movie - dark red/brown if they are deceased at the end of the movie, blue if they survived till the end. The vertex size corresponds to the degree of each character - the greater the number of on-screen dialogue a given character has, the bigger the size of their vertex bubble. The resulting network graph plus all the R code can be found in this folder. 
 
 
 
