@@ -1,9 +1,4 @@
 #### MY461 FORMATIVE ASSIGNMENT 1 ####
-# For my 1st formative assignment, I will be analyzing the network of Corleone family,
-# as outlined in The Godfather (1972) film directed by Coppola and co-written by Mario Puzo.
-# I will depict the Corleone Sicilian mafia network based on characters' on-camera dialogues/appearances.
-# For example, if Michael Corleone and Sonny Corleone had a dialogue in the movie, they will be connected 
-# in this network; since I will be focusing on on-camera dialogues, the depicted network will be undirected.
 
 ## LOADING PACKAGES
 library(igraph)
@@ -128,11 +123,6 @@ degree(mafia)
 mean(degree(mafia))
 graph.density(mafia)
 diameter(mafia)
-# The network is undirected, it has 35 vertices and 60 edges
-# The network has 5 vertex attributes - name, cue, color, gender, age
-# The network has density of 0.1008403, that implies that approximately 10.08%
-# of all potential network connections are realized. 
-# The diameter, i.e. longest geodesic path length, is 3.
 
 
 ## PLOTTING THE SICILIAN MAFIA NETWORK 
