@@ -1,4 +1,4 @@
-# Topic 02 
+# The Corleone family network
 In this assignment, I am analyzing the network of **Corleone family**, as outlined in **The Godfather (1972)** film directed by Coppola and co-written by Mario Puzo. I depict the Corleone Sicilian mafia network based on characters' **on-camera dialogues/appearances**. For example, if Michael Corleone and Sonny Corleone have a dialogue in the movie, they are connected in this network. Since I am focusing on on-camera dialogues, the depicted network is undirected (i.e., there cannot be an arrow pointing from one character to the next as dialogues are bi-directional by their nature).
 
 ### Assigning edge attributes
