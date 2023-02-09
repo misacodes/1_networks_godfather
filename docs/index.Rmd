@@ -8,7 +8,7 @@ output:
 ---
 
 # The Corleone family network
-In this assignment, I am analyzing the network of **Corleone family**, as outlined in **The Godfather (1972)** film directed by Coppola and co-written by Mario Puzo. I depict the Corleone Sicilian mafia network based on characters' **on-camera dialogues/appearances**. For example, if Michael Corleone and Sonny Corleone have a dialogue in the movie, they are connected in this network. Since I am focusing on on-camera dialogues, the depicted network is undirected (i.e., there cannot be an arrow pointing from one character to the next as dialogues are bi-directional by their nature).
+This project is the first part of my mini-series on social network analysis. The goal of this series is to start with the very basics of network analysis, such as with the concepts of centrality and assortativity, and progress towards more advanced topics, including Erdős-Rényi and Configuration models, as well as Exponential family random graphs. In this first project, I am analyzing the network of **Corleone family**, as outlined in **The Godfather (1972)** film directed by Coppola and co-written by Mario Puzo. I depict the Corleone Sicilian mafia network based on characters' **on-camera dialogues/appearances**. For example, if Michael Corleone and Sonny Corleone have a dialogue in the movie, they are connected in this network. Since I am focusing on on-camera dialogues, the depicted network is undirected (i.e., there cannot be an arrow pointing from one character to the next as dialogues are bi-directional by their nature).
 
 ### Loading libraries
 I start by loading the necessary libraries (igraph and igraphdata).
@@ -23,67 +23,7 @@ I then create an **edgelist dataframe** of on-camera dialogues of the Sicilian m
 
 ```{r}
 mafia <- graph(edges=c(
-  1,2,
-  1,3,
-  1,4,
-  1,5,
-  1,6,
-  1,7,
-  1,8,
-  1,9,
-  1,10,
-  1,11,
-  1,12,
-  1,13,
-  1,14,
-  1,15,
-  2,16,
-  2,17,
-  2,3,
-  2,18,
-  2,6,
-  2,19,
-  2,5,
-  2,20,
-  6,7,
-  6,21, 
-  6,3,
-  6,22,
-  6,23,
-  6,24,
-  6,18,
-  6,10,
-  6,25,
-  6,26,
-  6,27,
-  6,28,
-  6,29,
-  6,20,
-  6,30,
-  6,9,
-  6,31,
-  6,32,
-  6,33,
-  3,21,
-  3,34,
-  3,10,
-  3,24,
-  3,4,
-  3,35,
-  8,11,
-  8,10,
-  10,11,
-  5,20,
-  5,9,
-  5,17,
-  9,34,
-  18,19,
-  19,32,
-  7,21,
-  7,30,
-  20,11,
-  20,12),
-  directed=FALSE)
+  1,2,  1,3,  1,4,  1,5,  1,6,   1,7,  1,8,  1,9,  1,10,  1,11,  1,12,  1,13,  1,14,  1,15,  2,16,  2,17,  2,3,  2,18,  2,6,  2,19,  2,5,  2,20,  6,7,  6,21,  6,3,  6,22,  6,23,  6,24,  6,18,  6,10,  6,25,  6,26,  6,27,  6,28,  6,29,  6,20,  6,30,  6,9,  6,31,  6,32,  6,33,  3,21,  3,34,  3,10,  3,24,  3,4,  3,35,  8,11,  8,10,  10,11,  5,20,  5,9,  5,17,  9,34,  18,19,  19,32,  7,21,  7,30,  20,11,  20,12),  directed=FALSE)
 ```
 
 ### Assigning vertex attributes
