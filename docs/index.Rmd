@@ -176,9 +176,10 @@ To plot the network graph, I am using the **ggraph()** function in this exercise
 
 ```{r}
 E(mafia)$weight <- runif(ecount(mafia))
+E(mafia)$weight
 ```
 
-```{r}
+```{r, warning=FALSE, message=FALSE}
 library(ggraph)
 library(graphlayouts)
 degree_centrality <- degree(mafia, mode="all")
